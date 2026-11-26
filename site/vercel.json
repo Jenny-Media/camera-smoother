@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "^camera-smoother\\.jenny\\.media$" }],
+      "destination": "https://smooth.jenny.media/:path*",
+      "permanent": true
+    }
+  ]
+}

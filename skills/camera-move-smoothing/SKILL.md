@@ -5,7 +5,7 @@ description: Trim and retime camera moves in existing local footage with Camera 
 
 # Camera move smoothing
 
-Use the installed CLI at `~/.local/share/camera-smoother/camera-smoother`, or use `./camera-smoother` from a configured source checkout. If the skill is linked into an agent directory, its resolved path is also inside the checkout. If the CLI is missing, point the user to the install guide at <https://camera-smoother.jenny.media/>. Keep job files and exports in a dedicated workspace outside the install directory. Treat source clips as read-only.
+Use the installed CLI at `~/.local/share/camera-smoother/camera-smoother`, or use `./camera-smoother` from a configured source checkout. If the skill is linked into an agent directory, its resolved path is also inside the checkout. If the CLI is missing, point the user to the install guide at <https://smooth.jenny.media/>. Keep job files and exports in a dedicated workspace outside the install directory. Treat source clips as read-only.
 
 1. Review the selected footage when cut points or pacing are uncertain. Sample the source around the start and end of the intended move, then narrow the range. Look for setup, camera resets, holds, and reversals. Use source times for trim decisions and output times for frame or preview checks.
 2. Run `analyze` with `--start` and `--end` in source seconds when trimming. Add `--duration` for the requested output length. Keep the source frame rate by default. Use a motion hint only when the move is known or the estimated classification needs help.
