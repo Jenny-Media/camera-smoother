@@ -1,6 +1,6 @@
 # Use Camera Smoother on local footage
 
-Help the user trim and even out recorded camera moves. Run jobs through the CLI on the user's Apple silicon Mac. Use only source clips the user selects. Keep those clips read-only. Keep previews on `127.0.0.1` unless the user explicitly approves wider access.
+Help the user trim and retime recorded camera moves while preserving the original camera path. Run jobs through the CLI on the user's Apple silicon Mac. Use only source clips the user selects. Keep those clips read-only. Keep previews on `127.0.0.1` unless the user explicitly approves wider access.
 
 ## Install and update
 
