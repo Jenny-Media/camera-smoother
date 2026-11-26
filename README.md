@@ -4,29 +4,33 @@ A local CLI for evening out recorded camera moves on Apple silicon. FFmpeg reads
 
 ## Install
 
-The installer supports Apple silicon Macs with [Homebrew](https://brew.sh/) and Git. It installs missing FFmpeg and Python dependencies through Homebrew and uses a dedicated virtual environment. Review [the installer source](https://github.com/jenny-Media/camera-smoother/blob/v0.1.0/install.sh) before running it in your terminal.
-
-**Codex**
+The installer supports Apple silicon Macs with [Homebrew](https://brew.sh/) and Git. It installs missing FFmpeg and Python dependencies through Homebrew and uses a dedicated virtual environment. This command installs the latest stable CLI and the skill for both Codex and Claude Code. [Latest release](https://github.com/Jenny-Media/camera-smoother/releases/latest)
 
 ```sh
-installer=$(curl -fsSL https://raw.githubusercontent.com/jenny-Media/camera-smoother/v0.1.0/install.sh) && bash -c "$installer" -- codex
+installer=$(curl -fsSL https://smooth.jenny.media/install.sh) && bash -c "$installer"
 ```
 
-**Claude Code**
+Append `-- codex`, `-- claude`, or `-- cli` to select one target. Open a new agent session and ask it to use `camera-move-smoothing` on a local clip, or give it the [plain-text agent guide](https://smooth.jenny.media/agent.md). The installer links the skill into `~/.agents/skills` for Codex and `~/.claude/skills` for Claude Code. It refuses to replace an existing skill at either destination.
+
+To install a specific release on a fresh setup, use its versioned asset. For example, [view the v0.1.1 installer source](https://github.com/Jenny-Media/camera-smoother/blob/v0.1.1/install.sh) or run the pinned command.
 
 ```sh
-installer=$(curl -fsSL https://raw.githubusercontent.com/jenny-Media/camera-smoother/v0.1.0/install.sh) && bash -c "$installer" -- claude
+installer=$(curl -fsSL https://github.com/Jenny-Media/camera-smoother/releases/download/v0.1.1/install.sh) && bash -c "$installer"
 ```
 
-Use `both` for both agents or `cli` for the standalone CLI. Open a new agent session and ask it to use `camera-move-smoothing` on a local clip. The CLI is installed at `~/.local/share/camera-smoother/camera-smoother`. The installer links the skill into `~/.agents/skills` for Codex and `~/.claude/skills` for Claude Code, and refuses to replace an existing skill at either destination.
+### Check for updates
 
 ```sh
-"$HOME/.local/share/camera-smoother/camera-smoother" --help
+CS="$HOME/.local/share/camera-smoother/camera-smoother"
+"$CS" --version
+"$CS" check-update
 ```
+
+`check-update` queries GitHub for the latest stable release and reports `update_available`. For release notifications, watch [the repository](https://github.com/Jenny-Media/camera-smoother) and select releases. Rerun the install command to update, including from v0.1.0. The installer activates the new runtime after validating it and preserves the workspace and existing skill links. Older runtime environments remain on disk so running jobs can finish. Restart the agent to load the updated skill. Video processing stays offline. New code on `main` becomes an installable update when a stable release is published.
 
 ### Manual setup from a checkout
 
-Use Homebrew FFmpeg 8 or later and Python 3.13. Run these commands from a checkout, or `cd ~/.local/share/camera-smoother` after the one-line install to follow the CLI examples below.
+Use Homebrew FFmpeg 8 or later and Python 3.13. Run these setup commands from a checkout. With the one-line install, you can `cd ~/.local/share/camera-smoother` to follow the CLI examples below.
 
 ```sh
 brew install ffmpeg python@3.13
@@ -42,7 +46,7 @@ The prototype was exercised on arm64 with FFmpeg 8.1.2, Python 3.13, OpenCV 5.1.
 ```sh
 SOURCE="/absolute/path/to/clip.mp4"
 JOB=$(./camera-smoother analyze "$SOURCE" |
-  .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["job"])')
+  python3.13 -c 'import json,sys; print(json.load(sys.stdin)["job"])')
 ./camera-smoother render --job "$JOB"
 ./camera-smoother serve --job "$JOB"
 ```
@@ -56,13 +60,13 @@ Optional flags and variants are shown below. Each example analyzes a separate jo
 ```sh
 # Three comparison versions and an H.264 final using selective interpolation
 FLOW_JOB=$(./camera-smoother analyze "$SOURCE" |
-  .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["job"])')
+  python3.13 -c 'import json,sys; print(json.load(sys.stdin)["job"])')
 ./camera-smoother render --job "$FLOW_JOB" --interpolate flow
 ./camera-smoother serve --job "$FLOW_JOB" --port 8765
 
 # ProRes 422 editing export, with an optional viewing region and frame-rate override
 EDIT_JOB=$(./camera-smoother analyze "$SOURCE" --motion slide --reference .1,.15,.8,.65 |
-  .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["job"])')
+  python3.13 -c 'import json,sys; print(json.load(sys.stdin)["job"])')
 ./camera-smoother render --job "$EDIT_JOB" --codec prores --fps 30000/1001 --output edit.mov
 ```
 
@@ -75,7 +79,7 @@ EDIT_JOB=$(./camera-smoother analyze "$SOURCE" --motion slide --reference .1,.15
 
 ```sh
 JOB=$(./camera-smoother analyze "$SOURCE" --start 27 --end 32.5 --duration 11.011 --motion pan |
-  .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["job"])')
+  python3.13 -c 'import json,sys; print(json.load(sys.stdin)["job"])')
 ./camera-smoother render --job "$JOB" --interpolate camera --output smooth-pan-59.94.mp4
 ./camera-smoother serve --job "$JOB"
 ```
@@ -129,7 +133,7 @@ mkdir -p data/fixtures
 FIXTURE="data/fixtures/synthetic-$(date +%Y%m%d-%H%M%S).mp4"
 .venv/bin/python tests/synthetic.py "$FIXTURE"
 JOB=$(./camera-smoother analyze "$FIXTURE" |
-  .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["job"])')
+  python3.13 -c 'import json,sys; print(json.load(sys.stdin)["job"])')
 ./camera-smoother render --job "$JOB" --interpolate flow
 ./camera-smoother cleanup --job "$JOB"
 ./camera-smoother cleanup --job "$JOB" --previews
@@ -146,6 +150,10 @@ Install the optional JWT test dependency and run the suite. The HTTP tests liste
 The fixture includes an uneven pan and reversal, a hold, tilt, diagonal slide with a differently moving foreground rail, push-in and pullback, static tail and four cuts. Tests validate improvement against the known motion, endpoint pictures, holds and static frames, duration, selective interpolation, VFR timing and cut boundaries, ProRes playback levels, range requests, publication recovery, and source integrity. The paused-playhead regression runs when Node is available.
 
 For footage review, provide two original clips of roughly 5–15 seconds each. A scenic pan with surf and a textured horizon works well. For the second clip, use a push-in or slide with a railing or nearby subject crossing a distant background, ideally with a foreground reveal. Leave a short lead-in and tail. SDR footage is ready for a full three-way comparison.
+
+## Publish a stable release
+
+Set the new version in `smoother/__init__.py` and the corresponding tag in `install.sh`. Run the tests and smoke-test a clean install and an upgrade. From the tagged checkout, attach `install.sh` to the GitHub release with that exact filename. Publish the release as **Latest** once its asset is attached. The site's install URL and `check-update` then point to that release.
 
 ## Optional remote access, after explicit approval
 

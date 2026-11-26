@@ -12,6 +12,17 @@
       "has": [{ "type": "host", "value": "^camera-smoother\\.jenny\\.media$" }],
       "destination": "https://smooth.jenny.media/:path*",
       "permanent": true
+    },
+    {
+      "source": "/install.sh",
+      "destination": "https://github.com/Jenny-Media/camera-smoother/releases/latest/download/install.sh",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/agent.md",
+      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
     }
   ]
 }

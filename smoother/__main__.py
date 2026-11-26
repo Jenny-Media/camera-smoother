@@ -7,6 +7,7 @@ import sys
 from fractions import Fraction
 from pathlib import Path
 
+from . import __version__
 from .jobs import DEFAULT_WORKSPACE, Job, SmootherError, budget, owns_publication, read_json, sync_directory, write_json
 
 
@@ -50,6 +51,7 @@ def fov_value(text):
 
 def parser():
     root = argparse.ArgumentParser(prog="camera-smoother", description="Local camera-move analysis and retiming.")
+    root.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     root.add_argument("--workspace", type=Path,
                       default=os.getenv("CAMERA_SMOOTHER_WORKSPACE", DEFAULT_WORKSPACE),
                       help="Managed directory containing separate jobs/ and exports/ directories.")
@@ -84,6 +86,7 @@ def parser():
     cleanup.add_argument("--job", required=True)
     cleanup.add_argument("--apply", action="store_true", help="Apply the displayed cleanup scope.")
     cleanup.add_argument("--previews", action="store_true", help="Include this job's previews.")
+    commands.add_parser("check-update", help="Check GitHub for a newer stable release.")
     return root
 
 
@@ -204,6 +207,10 @@ def main(argv=None):
     job = manifest = None
     extra = {}
     try:
+        if args.command == "check-update":
+            from .updates import check_update
+            print(json.dumps(check_update(), indent=2))
+            return 0
         if args.command == "serve":
             from .server import serve, serve_gallery
             if args.gallery:

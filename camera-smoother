@@ -1,4 +1,9 @@
 #!/bin/sh
 set -eu
-project="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+project="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+if [ -L "$project/.current" ]; then
+    export CAMERA_SMOOTHER_WORKSPACE="${CAMERA_SMOOTHER_WORKSPACE:-$project/data}"
+    runtime="$(CDPATH='' cd -- "$project/.current" && pwd -P)"
+    exec "$runtime/camera-smoother" "$@"
+fi
 exec "$project/.venv/bin/python" -P "$project/cli.py" "$@"
