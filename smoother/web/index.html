@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Camera Move Review</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <a id="gallery-link" class="gallery-link" href="/" hidden>← All edited videos</a>
+    <header><h1 id="clip-title">Camera Move Review</h1><p id="clip-info"></p></header>
+    <p id="status" role="status">Loading preview…</p>
+    <section id="review" aria-label="Synchronized video comparison" hidden>
+      <div id="choices" aria-label="Preview version"></div>
+      <div id="videos"></div>
+      <div class="transport">
+        <button type="button" id="play">Play</button>
+        <input id="scrub" type="range" min="0" value="0" step="any" aria-label="Shared playhead">
+        <output id="time" for="scrub"></output>
+      </div>
+      <section class="motion" aria-labelledby="motion-title">
+        <div class="motion-header">
+          <div><h2 id="motion-title">Apparent motion speed</h2>
+          <p>Compare speeds within each movement segment.</p></div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <canvas id="plot" aria-label="Motion speed, cuts, low-confidence segments, and generated frames"></canvas>
+        <div class="axis"><span>0:00</span><span id="duration"></span></div>
+        <details>
+          <summary>Movement segments</summary>
+          <ul id="segments"></ul>
+        </details>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
