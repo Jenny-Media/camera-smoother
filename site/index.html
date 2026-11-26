@@ -3,70 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Even out pans, slides and push-ins on your Mac. Install the open-source Camera Smoother CLI for Codex or Claude Code.">
+  <meta name="description" content="Install and use Camera Smoother to even out the pace of a recorded camera move on your Mac.">
   <meta name="theme-color" content="#111818">
   <link rel="canonical" href="https://smooth.jenny.media/">
   <link rel="stylesheet" href="style.css">
   <script src="copy.js" defer></script>
-  <title>Camera Smoother · Local camera-move retiming</title>
+  <title>Camera Smoother</title>
 </head>
 <body>
-  <header class="shell masthead">
-    <a class="publisher" href="https://jenny.media/">Jenny Media</a>
-    <a href="https://github.com/jenny-Media/camera-smoother">GitHub <span aria-hidden="true">↗</span></a>
-  </header>
   <main class="shell">
-    <section class="intro" aria-labelledby="title">
-      <h1 id="title">Camera<br>Smoother</h1>
-      <div class="intro-copy">
-        <p class="lede">Even out the pace of a camera move while keeping its path.</p>
-        <p>Trim the setup and tail, smooth pans and slides, and compare captured and interpolated frames in a local preview. Your original stays read-only. All footage processing runs on your Mac.</p>
+    <header>
+      <h1>Camera Smoother</h1>
+      <p class="intro">Even out the pace of a camera move while keeping its path.</p>
+    </header>
+
+    <section aria-labelledby="install">
+      <div class="section-heading">
+        <h2 id="install">Install or update</h2>
+        <button id="copy-install" type="button" aria-label="Copy install command" hidden>Copy</button>
       </div>
+      <p>Run on an Apple silicon Mac with Git and Homebrew. This installs the CLI and skills for Codex and Claude Code.</p>
+      <pre><code id="install-command">installer=$(curl -fsSL https://smooth.jenny.media/install.sh) &amp;&amp; bash -c "$installer"</code></pre>
+      <p id="copy-status" role="status"></p>
     </section>
 
-    <section class="installation" aria-labelledby="install">
-      <div class="section-copy">
-        <h2 id="install">Install</h2>
-        <p>Requires an Apple silicon Mac with Git and <a href="https://brew.sh/">Homebrew</a>. One command installs the latest stable CLI and its skill for Codex and Claude Code.</p>
-        <a class="text-link" href="https://github.com/Jenny-Media/camera-smoother/releases/latest">Latest release <span aria-hidden="true">↗</span></a>
-      </div>
-      <div class="commands">
-        <div class="command">
-          <div class="command-header"><h3>Install or update in Terminal</h3><button type="button" data-copy="install-command" aria-label="Copy install command" hidden>Copy</button></div>
-          <pre><code id="install-command">installer=$(curl -fsSL https://smooth.jenny.media/install.sh) &amp;&amp; bash -c "$installer"</code></pre>
-        </div>
-        <p class="next-step">Use <code>-- codex</code>, <code>-- claude</code> or <code>-- cli</code> at the end to choose one target. Run <code>~/.local/share/camera-smoother/camera-smoother check-update</code> to check for a release.</p>
-        <p class="copy-status" role="status"></p>
-      </div>
+    <section aria-labelledby="workflow">
+      <h2 id="workflow">Analyze, render, and preview</h2>
+      <p>Choose a local clip. Replace <code>JOB_ID</code> with the ID from <code>analyze</code>. The source stays read-only.</p>
+      <pre><code>CS="$HOME/.local/share/camera-smoother/camera-smoother"
+"$CS" analyze "/absolute/path/to/clip.mp4"
+"$CS" render --job JOB_ID
+"$CS" serve --job JOB_ID</code></pre>
+      <p>Open the preview URL printed by <code>serve</code>.</p>
     </section>
 
-    <section class="installation" aria-labelledby="agent">
-      <div class="section-copy">
-        <h2 id="agent">For AI tools</h2>
-        <p>Give your agent the install and editing workflow in plain text.</p>
-        <a class="text-link" href="agent.md">Read the agent guide <span aria-hidden="true">↗</span></a>
-      </div>
-      <div class="commands">
-        <div class="command">
-          <div class="command-header"><h3>Prompt for your agent</h3><button type="button" data-copy="agent-prompt" aria-label="Copy agent prompt" hidden>Copy</button></div>
-          <pre id="agent-prompt">Read https://smooth.jenny.media/agent.md and help me use Camera Smoother on the local clips I select.</pre>
-        </div>
-        <p class="copy-status" role="status"></p>
-      </div>
-    </section>
-
-    <section class="details" aria-labelledby="workflow">
-      <h2 id="workflow">From clip to export</h2>
-      <ol>
-        <li><h3>Analyze a move</h3><p>Track camera movement, choose trim points and flag cuts or stretches with uncertain motion.</p></li>
-        <li><h3>Compare the timing</h3><p>Review the original, captured-frame retime and optional interpolation on the same playhead.</p></li>
-        <li><h3>Keep the edit</h3><p>Export a silent H.264 MP4 at source resolution and frame rate by default. ProRes 422 is available.</p></li>
-      </ol>
-    </section>
+    <footer>
+      <a href="/agent.md">Plain-text agent guide</a>
+      <a href="https://github.com/Jenny-Media/camera-smoother">GitHub</a>
+    </footer>
   </main>
-  <footer class="shell footer">
-    <a href="https://github.com/jenny-Media/camera-smoother#readme">CLI documentation</a>
-    <a href="https://github.com/jenny-Media/camera-smoother/blob/main/LICENSE">MIT license</a>
-  </footer>
 </body>
 </html>
