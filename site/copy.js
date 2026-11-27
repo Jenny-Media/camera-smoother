@@ -3,7 +3,7 @@ if (navigator.clipboard?.writeText) {
     button.hidden = false;
     button.addEventListener('click', async () => {
       const text = document.getElementById(button.dataset.copy);
-      const feedback = button.closest('section, details').querySelector('[role="status"]');
+      const feedback = button.closest('section').querySelector('[role="status"]');
       try {
         await navigator.clipboard.writeText(text.textContent);
         feedback.textContent = 'Copied.';

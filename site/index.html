@@ -26,13 +26,20 @@
       <p class="copy-status" role="status"></p>
     </section>
 
-    <details>
-      <summary>Install in Terminal</summary>
+    <section aria-labelledby="install-heading">
+      <div class="section-heading">
+        <h2 id="install-heading">Install in Terminal</h2>
+        <button type="button" data-copy="install-command" hidden>Copy install command</button>
+      </div>
       <p>Requires an Apple silicon Mac with Git and Homebrew.</p>
       <pre><code id="install-command">installer=$(curl -fsSL https://smooth.jenny.media/install.sh) &amp;&amp; bash -c "$installer"</code></pre>
-      <button type="button" data-copy="install-command" hidden>Copy install command</button>
       <p class="copy-status" role="status"></p>
-    </details>
+    </section>
+
+    <section aria-labelledby="how-heading">
+      <h2 id="how-heading">How it works</h2>
+      <p>Camera Smoother follows visual features from frame to frame and adjusts the timing where it can measure the move reliably. It preserves the camera path and saves a separate video on your Mac.</p>
+    </section>
 
     <footer>
       <a href="/agent.md">Plain-text agent guide</a>
