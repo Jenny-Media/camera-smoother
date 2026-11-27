@@ -1,15 +1,15 @@
-const copyButton = document.getElementById('copy-install');
-
 if (navigator.clipboard?.writeText) {
-  copyButton.hidden = false;
-  copyButton.addEventListener('click', async () => {
-    const command = document.getElementById('install-command');
-    const feedback = document.getElementById('copy-status');
-    try {
-      await navigator.clipboard.writeText(command.textContent);
-      feedback.textContent = 'Copied.';
-    } catch {
-      feedback.textContent = 'Select and copy the command above.';
-    }
-  });
+  for (const button of document.querySelectorAll('[data-copy]')) {
+    button.hidden = false;
+    button.addEventListener('click', async () => {
+      const text = document.getElementById(button.dataset.copy);
+      const feedback = button.closest('section, details').querySelector('[role="status"]');
+      try {
+        await navigator.clipboard.writeText(text.textContent);
+        feedback.textContent = 'Copied.';
+      } catch {
+        feedback.textContent = 'Select and copy the text above.';
+      }
+    });
+  }
 }
