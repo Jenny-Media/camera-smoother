@@ -24,7 +24,7 @@ from smoother.flow import prepare, synthesize
 from smoother.jobs import Job, SmootherError, budget, checksum, fingerprint, read_json
 from smoother.motion import measure
 from smoother.render import encode
-from smoother.retime import plan
+from smoother.retime import plan, safe_auto_pair
 from smoother.server import Access, ThreadingHTTPServer, comparison_pages, handler_type, preview_data
 from smoother.video import FFMPEG, exported_media
 
@@ -204,6 +204,51 @@ class PipelineTests(unittest.TestCase):
         replay = self.cli("render", "--job", job_id, "--interpolate", "camera")
         self.assertTrue(replay["already_rendered"])
         self.assertEqual(replay["render_settings"]["interpolate"], "camera")
+        self.assertEqual(checksum(self.source)[0], self.original_hash)
+
+    def test_share_plan_and_export_preserve_rate_and_limit_size(self):
+        source = self.root / "share-source.mp4"
+        subprocess.run(FFMPEG + ["-f", "lavfi", "-i", "color=blue:size=2560x1440:rate=60000/1001",
+                                  "-frames:v", "12", "-c:v", "libx264", "-preset", "ultrafast", str(source)],
+                       check=True)
+        analyzed = self.cli("analyze", str(source))
+        self.assertEqual(analyzed["recommendation"]["retimed_segments"], 0)
+        args = ("render", "--job", analyzed["job"], "--preset", "share", "--output", "smaller.mp4")
+        pending = self.cli(*args, "--plan")
+        self.assertEqual(pending["exports"], [])
+        settings = pending["render_settings"]
+        self.assertEqual(settings["export_path"], str(self.work / "exports/smaller.mp4"))
+        self.assertFalse(Path(settings["export_path"]).exists())
+        self.assertEqual((settings["width"], settings["height"], settings["fps"]), (1920, 1080, "60000/1001"))
+        result = self.cli(*args)
+        self.assertEqual(result["exports"], [settings["export_path"]])
+        report = load(result["report"])
+        self.assertEqual(report["export"]["codec"], "h264")
+        self.assertEqual(report["export"]["width"], 1920)
+        self.assertEqual(report["export"]["frame_count"], 12)
+        self.assertEqual(self.cli(*args)["render_settings"]["preset"], "share")
+        conflict = self.cli("render", "--job", analyzed["job"], "--preset", "playback", expected=1)
+        self.assertIn("--preset", conflict["error"])
+
+    def test_auto_frame_generation_gates_by_pair_confidence(self):
+        analyzed = self.cli("analyze", str(self.source), "--start", ".5", "--end", "2.5", "--duration", "4",
+                            "--motion", "pan")
+        self.assertEqual(analyzed["recommendation"]["frame_generation"], "preview-auto")
+        report_path = Path(analyzed["report"])
+        analysis = load(report_path)
+        for pair in analysis["pairs"][:20]:
+            pair["confidence"] = min(.70, pair["confidence"])
+        report_path.write_text(json.dumps(analysis))
+        rendered = self.cli("render", "--job", analyzed["job"], "--interpolate", "auto")
+        report = load(rendered["report"])
+        self.assertGreater(len(report["generated_frames"]), 0)
+        candidates = report["recommendation"]
+        self.assertLess(candidates["auto_candidates"], candidates["interpolation_candidates"])
+        for index in report["generated_frames"]:
+            item = report["time_map"][index]
+            self.assertGreaterEqual(item["left_frame"], 20)
+            self.assertTrue(item["interpolation_candidate"])
+            self.assertTrue(safe_auto_pair(report["pairs"][item["left_frame"]]))
         self.assertEqual(checksum(self.source)[0], self.original_hash)
 
     def test_failure_preserves_input_and_cleanup_scope(self):

@@ -665,8 +665,10 @@ main(sys.argv[1:])
                 error = self.cli("render", "--job", job.id, "--output", "requested.mov", "--codec", "prores",
                                  "--fps", "12", "--interpolate", "flow", expected=1)
                 self.assertIn("conflict", error["error"])
-                self.assertEqual(error["render_settings"], {"output": export.name, "codec": "h264",
-                                                            "fps": "24/1", "interpolate": "none"})
+                settings = error["render_settings"]
+                self.assertEqual({key: settings[key] for key in ("output", "codec", "fps", "interpolate", "preset")},
+                                 {"output": export.name, "codec": "h264", "fps": "24/1", "interpolate": "none",
+                                  "preset": "playback"})
                 self.assertEqual(job.manifest_path.read_bytes(), before)
                 completed = self.cli("render", "--job", job.id, "--output", export.name, "--fps", "24")
                 self.assertEqual(completed["status"], "rendered")

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import __version__
 from .jobs import DEFAULT_WORKSPACE, Job, SmootherError, budget, owns_publication, read_json, sync_directory, write_json
+from .presets import CODEC_PRESETS, PRESET_CODECS
 
 
 def fps_value(text):
@@ -68,10 +69,13 @@ def parser():
     render = commands.add_parser("render", help="Render a previously analyzed job.")
     render.add_argument("--job", required=True)
     render.add_argument("--fps", type=fps_value)
-    render.add_argument("--codec", choices=["h264", "prores"], help="Export codec for a new render. Defaults to h264.")
-    render.add_argument("--interpolate", choices=["none", "flow", "camera"],
-                        help="Interpolation for a new render. Camera mode uses one transform across the shot.")
+    mode = render.add_mutually_exclusive_group()
+    mode.add_argument("--preset", choices=PRESET_CODECS, help="Export preset. Defaults to playback.")
+    mode.add_argument("--codec", choices=CODEC_PRESETS, help="Choose the full-size export codec directly.")
+    render.add_argument("--interpolate", choices=["none", "auto", "flow", "camera"],
+                        help="Generate frames selectively. Auto uses stricter confidence and alignment checks.")
     render.add_argument("--output", metavar="FILENAME", help="New filename inside the managed exports directory.")
+    render.add_argument("--plan", action="store_true", help="Show export settings and path without encoding.")
     serve = commands.add_parser("serve", help="Serve a comparison or an edited-video gallery on 127.0.0.1.")
     target = serve.add_mutually_exclusive_group(required=True)
     target.add_argument("--job", help="Serve one job.")
@@ -115,13 +119,29 @@ def analyze_job(args, job, manifest):
     write_json(job.report_path, report)
     manifest["status"] = "analyzed"
     job.save(manifest)
+    return timing["recommendation"]
+
+
+def export_options(args, report):
+    fps = args.fps or fps_value(report["fps"])
+    preset = args.preset or CODEC_PRESETS[args.codec or "h264"]
+    return fps, preset, args.interpolate or "none"
+
+
+def plan_export(args, job, manifest):
+    from .render import describe_export
+    if manifest["status"] not in {"analyzed", "render_failed"}:
+        raise SmootherError("Planning requires an analyzed job with no completed export.")
+    report = read_json(job.report_path)
+    fps, preset, interpolation = export_options(args, report)
+    return describe_export(job, report, fps, preset, interpolation, args.output)
 
 
 def render_job(args, job, manifest):
     from .motion import ANALYSIS_VERSION, analyze
     from .render import render
     report = read_json(job.report_path)
-    fps = args.fps or fps_value(report["fps"])
+    fps, preset, interpolation = export_options(args, report)
     if report.get("analysis_version") != ANALYSIS_VERSION:
         from .retime import output_frame_count
         from .video import probe, trim_media
@@ -133,7 +153,7 @@ def render_job(args, job, manifest):
         report["pairs"] = analyze(manifest["source"], media, options["reference"], options["fov"],
                                   options["motion_hint"], job.path / "scratch")
         report["analysis_version"] = ANALYSIS_VERSION
-    render(job, manifest, report, fps, args.codec or "h264", args.interpolate or "none", args.output)
+    return render(job, manifest, report, fps, PRESET_CODECS[preset], interpolation, args.output, preset=preset)
 
 
 def resume_render(args, job, manifest, extra):
@@ -148,11 +168,13 @@ def resume_render(args, job, manifest, extra):
     report = job.render_report(manifest, pending_path=pending[0] if pending else None)
     export = report["export"]
     interpolation = report.get("interpolation", "flow" if report.get("interpolation_backend") else "none")
-    settings = {"output": Path(export["path"]).name, "fps": export["fps"], "codec": export["codec"],
-                "interpolate": interpolation}
+    settings = report.get("render_settings") or {"output": Path(export["path"]).name, "fps": export["fps"],
+                                                 "codec": export["codec"], "interpolate": interpolation}
     extra["render_settings"] = settings
-    requested = {"output": args.output, "fps": args.fps, "codec": args.codec, "interpolate": args.interpolate}
-    actual = {**settings, "fps": Fraction(settings["fps"])}
+    requested = {"output": args.output, "fps": args.fps, "codec": args.codec,
+                 "interpolate": args.interpolate, "preset": args.preset}
+    actual = {**settings, "fps": Fraction(settings["fps"]),
+              "preset": report.get("preset", CODEC_PRESETS[export["codec"]])}
     conflicts = [f"--{key}" for key, value in requested.items() if value is not None and value != actual[key]]
     if conflicts:
         raise SmootherError(f"{', '.join(conflicts)} conflict with the existing export. Analyze a new job for different settings.")
@@ -178,7 +200,7 @@ def run_render(args, job, manifest, extra):
         require_video_tools()
         starting_render = True
         job.verify(manifest, "before_render")
-        render_job(args, job, manifest)
+        extra["render_settings"] = render_job(args, job, manifest)
     except BaseException as exc:
         if not starting_render and not isinstance(exc, OSError):
             raise
@@ -223,16 +245,19 @@ def main(argv=None):
             job = Job.create(args.workspace, args.source)
         else:
             job = Job(args.workspace, args.job)
-        with job.lock() as manifest:
+        planning = args.command == "render" and args.plan
+        with job.lock(shared=planning) as manifest:
             if args.command == "cleanup":
                 extra["cleanup"] = job.cleanup(manifest, args.apply, args.previews)
             elif args.command == "analyze":
                 try:
-                    analyze_job(args, job, manifest)
+                    extra["recommendation"] = analyze_job(args, job, manifest)
                 except BaseException:
                     manifest["status"] = "analysis_failed"
                     job.verify(manifest, "after_failed_analysis", require=False)
                     raise
+            elif planning:
+                extra["render_settings"] = plan_export(args, job, manifest)
             else:
                 run_render(args, job, manifest, extra)
             print(json.dumps({**job.summary(manifest), **extra}, indent=2))

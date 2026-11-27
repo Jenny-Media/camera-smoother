@@ -192,7 +192,7 @@ def decode_args(source, media, pixel, vf=None):
     return command + ["-threads", "2", "-pix_fmt", pixel, "-f", "rawvideo", "pipe:1"]
 
 
-def output_args(pixel, width, height, fps, count, fd, colors, sar, codec):
+def output_args(pixel, width, height, fps, count, fd, colors, sar, codec, *, share_size=None):
     command = FFMPEG + ["-f", "rawvideo", "-pix_fmt", pixel, "-video_size", f"{width}x{height}",
                         "-framerate", str(fps)]
     color_range = colors.get("color_range")
@@ -202,7 +202,7 @@ def output_args(pixel, width, height, fps, count, fd, colors, sar, codec):
     filters = []
     if sar != "1":
         filters.append(f"setsar={sar}")
-    if codec == "prores" and color_range == "pc":
+    if codec in {"prores", "hevc"} and color_range == "pc":
         filters.append("scale=in_range=pc:out_range=tv")
         colors = {**colors, "color_range": "tv"}
     if codec == "proxy":
@@ -210,6 +210,12 @@ def output_args(pixel, width, height, fps, count, fd, colors, sar, codec):
         if color_range in ("pc", "tv"):
             proxy_scale += f":in_range={color_range}:out_range={color_range}"
         filters += [proxy_scale, "format=yuv420p"]
+    if share_size is not None:
+        width, height = share_size
+        scale = f"scale={width}:{height}:reset_sar=1"
+        if color_range in ("pc", "tv"):
+            scale += f":in_range={color_range}:out_range={color_range}"
+        filters += [scale, "format=yuv420p"]
     frame_tags = [f"{field}={colors[key]}" for key, field in FRAME_COLOR_FIELDS.items() if key in colors]
     if frame_tags:
         filters.append("setparams=" + ":".join(frame_tags))
@@ -218,17 +224,25 @@ def output_args(pixel, width, height, fps, count, fd, colors, sar, codec):
     if codec in {"h264", "proxy"}:
         if codec == "proxy":
             limit = 8_000_000
+            crf = "19"
         else:
-            limit = h264_limit(width, height, fps)
-        # Reserve space for the MP4 index before media. Faststart reopens the
-        # destination and cannot safely shift data on an inherited descriptor.
-        command += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "19" if codec == "proxy" else "17",
-                    "-maxrate", str(limit), "-bufsize", str(2 * limit),
-                    "-moov_size", str(8192 + 64 * count)]
+            limit = export_bitrate_limit(codec, width, height, fps, share=share_size is not None)
+            crf = "23" if share_size is not None else "17"
+        command += ["-c:v", "libx264", "-preset", "veryfast", "-crf", crf,
+                    "-maxrate", str(limit), "-bufsize", str(2 * limit)]
+    elif codec == "hevc":
+        limit = export_bitrate_limit(codec, width, height, fps)
+        command += ["-c:v", "hevc_videotoolbox", "-allow_sw", "0", "-profile:v", "main",
+                    "-q:v", "48", "-maxrate", str(limit), "-bufsize", str(2 * limit), "-tag:v", "hvc1"]
     else:
         command += ["-c:v", "prores_ks", "-profile:v", "2", "-vendor", "apl0"]
+    if codec != "prores":
+        # Reserve space for the MP4 index before media. Faststart reopens the
+        # destination and cannot safely shift data on an inherited descriptor.
+        command += ["-moov_size", str(8192 + 64 * count)]
     container = "mov" if codec == "prores" else "mp4"
-    return command + color_args(colors, pixel, codec) + ["-threads", "2", "-f", container, "-fd", str(fd), "fd:"]
+    output_pixel = "yuv420p" if share_size is not None else pixel
+    return command + color_args(colors, output_pixel, codec) + ["-threads", "2", "-f", container, "-fd", str(fd), "fd:"]
 
 
 def color_args(colors, pixel, codec):
@@ -237,8 +251,10 @@ def color_args(colors, pixel, codec):
             (pixel != "yuv444p" or codec == "proxy") for arg in (COLOR_FIELDS[key], value)]
 
 
-def h264_limit(width, height, fps):
-    return max(3_000_000, round(width * height * float(fps) * .5))
+def export_bitrate_limit(codec, width, height, fps, *, share=False):
+    factor = .15 if codec == "hevc" else .50
+    limit = max(3_000_000, round(width * height * float(fps) * factor))
+    return min(12_000_000, limit) if share else limit
 
 
 def layout(width, height, pixel):
@@ -259,12 +275,16 @@ def read_frame(stream, count):
 def validate_export(path, media, fps, count, codec):
     info = exported_media(path)
     streams = info.get("streams", [])
-    expected_codec = "h264" if codec == "h264" else "prores"
-    if len(streams) != 1 or streams[0].get("codec_name") != expected_codec:
+    if len(streams) != 1 or streams[0].get("codec_name") != codec:
         raise SmootherError("Unexpected video codec or additional streams in export.")
     stream = streams[0]
+    if codec == "hevc" and stream.get("codec_tag_string") != "hvc1":
+        raise SmootherError("Apple Playback export must use the hvc1 HEVC tag.")
     try:
-        actual = {"codec": expected_codec, "width": stream["width"], "height": stream["height"],
+        bitrate = stream.get("bit_rate", "")
+        actual = {"codec": codec, "codec_tag": stream.get("codec_tag_string"),
+                  "bitrate_bps": int(bitrate) if str(bitrate).isdigit() else None,
+                  "width": stream["width"], "height": stream["height"],
                   "fps": stream["avg_frame_rate"], "duration": float(stream["duration"]),
                   "frame_count": int(stream["nb_frames"]), "colors": {
                       key: stream[key] for key in COLOR_FIELDS if key in stream}}

@@ -59,6 +59,7 @@ def matches_export(path, info, entry, verify_bytes=False):
 
 
 def validate_legacy_export(path, report):
+    from .presets import export_dimensions
     from .video import rate, validate_export
 
     media = report["export"]
@@ -66,7 +67,9 @@ def validate_legacy_export(path, report):
     if not fps or fps <= 0:
         raise SmootherError(f"Invalid frame rate in the saved render report: {path}")
     source = report["source_media"]
-    target = {**source, "duration": report.get("target_duration", source["duration"])}
+    width, height = export_dimensions(source, report.get("preset"))
+    target = {**source, "width": width, "height": height,
+              "duration": report.get("target_duration", source["duration"])}
     validate_export(path, target, fps, media["frame_count"], media["codec"])
 
 
@@ -320,7 +323,7 @@ class Job:
         report = read_json(report_path)
         media = report.get("export") or {}
         if (report.get("job") != self.id or media.get("path") != str(export) or not media.get("decoded_all_frames")
-                or media.get("codec") not in {"h264", "prores"}):
+                or media.get("codec") not in {"h264", "hevc", "prores"}):
             raise SmootherError(f"Render report does not describe the verified export: {export}")
         return report
 
@@ -429,11 +432,14 @@ class Job:
         manifest["status"] = "render_failed"
         self.save(manifest)
 
-    def export_file(self, name, suffix):
+    def export_file(self, name, suffix, *, create=True):
         if not EXPORT_NAME.fullmatch(name) or Path(name).suffix != suffix:
             raise SmootherError(f"Use an export filename ending in {suffix}, within the exports directory.")
         folder = safe_path(self.workspace / "exports")
-        folder.mkdir(exist_ok=True)
+        if create:
+            folder.mkdir(exist_ok=True)
+        elif folder.exists() and not folder.is_dir():
+            raise SmootherError(f"Exports path is not a directory: {folder}")
         path = safe_path(folder / name)
         if path.exists():
             raise SmootherError(f"Export path already exists: {path}")

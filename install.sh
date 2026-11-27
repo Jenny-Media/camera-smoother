@@ -6,7 +6,7 @@ die() {
     exit 1
 }
 
-release=v0.1.1
+release=v0.1.2
 target="${1:-both}"
 install_home="${CAMERA_SMOOTHER_INSTALL_HOME:-$HOME}"
 case "$target" in

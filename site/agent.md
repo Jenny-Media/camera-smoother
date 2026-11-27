@@ -31,7 +31,9 @@ Use the installed `camera-move-smoothing` skill if available. Keep jobs and expo
 ```
 
 - Use `--start` and `--end` for trim points in source seconds, and `--duration` when the user wants a new length. Keep the source frame rate by default.
-- Check the analysis report for trim bounds, cuts, low confidence, and reliable movement before rendering. Use `--interpolate camera` on a separate job for a coherent pan, or `--interpolate flow` for a comparison. Inspect foreground reveals, railings, and moving water before recommending the interpolated result.
+- Read `recommendation` from `analyze` before rendering. `little-change` means the plan found little reliable speed correction. `review-first` flags uncertain motion. Check cuts and trim bounds in the report. If `frame_generation` is `preview-auto`, consider `--interpolate auto` on a comparison job. It uses a stricter frame-pair confidence gate and falls back to captured frames when alignment fails. The default uses captured frames. Inspect foreground reveals, railings, and moving water before recommending the interpolated result.
+- Use `--preset playback` for full-size H.264, `--preset apple-playback` for full-size HEVC for Apple devices, `--preset editing` for ProRes 422, or `--preset share` for a smaller H.264 MP4. All presets keep source FPS by default. Use `--fps` only when the user requests a different rate. Analyze a new job for another export.
+- Set `--output` to the requested filename inside the workspace's `exports/` directory. Use `render --plan` with the same flags to show the exact destination and settings before encoding.
 - Report the final export path, local preview URL, source range, output duration, and frame rate. Use `cleanup --job "$JOB"` to preview managed cleanup. Leave scratch and previews in place unless the user requests removal.
 
 See the [CLI documentation](https://github.com/Jenny-Media/camera-smoother#readme) for options and troubleshooting.

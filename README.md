@@ -12,10 +12,10 @@ installer=$(curl -fsSL https://smooth.jenny.media/install.sh) && bash -c "$insta
 
 Append `-- codex`, `-- claude`, or `-- cli` to select one target. Open a new agent session and ask it to use `camera-move-smoothing` on a local clip, or give it the [plain-text agent guide](https://smooth.jenny.media/agent.md). The installer links the skill into `~/.agents/skills` for Codex and `~/.claude/skills` for Claude Code. It refuses to replace an existing skill at either destination.
 
-To install a specific release on a fresh setup, use its versioned asset. For example, [view the v0.1.1 installer source](https://github.com/Jenny-Media/camera-smoother/blob/v0.1.1/install.sh) or run the pinned command.
+To install a specific release on a fresh setup, use its versioned asset. For example, [view the v0.1.2 installer source](https://github.com/Jenny-Media/camera-smoother/blob/v0.1.2/install.sh) or run the pinned command.
 
 ```sh
-installer=$(curl -fsSL https://github.com/Jenny-Media/camera-smoother/releases/download/v0.1.1/install.sh) && bash -c "$installer"
+installer=$(curl -fsSL https://github.com/Jenny-Media/camera-smoother/releases/download/v0.1.2/install.sh) && bash -c "$installer"
 ```
 
 ### Check for updates
@@ -53,6 +53,25 @@ JOB=$(./camera-smoother analyze "$SOURCE" |
 
 Open [the local review page](http://127.0.0.1:8765/). The play button, timeline slider and clickable speed graph share one playhead. On phones, switch versions above the player. Cuts and low-confidence ranges are marked in gold. Purple ticks show generated frames. The server lists proxies for only the selected job and supports HTTP byte ranges. It binds to loopback and serves video, the review page and the graph's derived data.
 
+`analyze` returns a `recommendation` alongside the job ID. It says whether any reliable segments will be retimed, lists uncertain ranges, and counts frame positions worth previewing with Auto. The full report contains every segment and its reasons. A recommendation describes the plan. Frame-pair alignment still has to pass during rendering.
+
+### Export presets
+
+| Purpose | `--preset` | Export |
+| --- | --- | --- |
+| Playback (default) | `playback` | High-quality H.264 MP4 at source display resolution. |
+| Apple Playback | `apple-playback` | HEVC MP4 with the Apple-compatible `hvc1` tag at source display resolution. Uses hardware VideoToolbox and requires even source dimensions. |
+| Editing | `editing` | 10-bit ProRes 422 MOV at source display resolution. |
+| Share | `share` | Smaller H.264 MP4. Fits within 1920×1080 in landscape or 1080×1920 in portrait. Uses CRF 23 and a rate cap of up to 12 Mb/s. |
+
+All presets keep the planned source FPS and duration by default, and export silent video. Preview proxies remain H.264. Use `--fps` to choose a different rate. `--interpolate auto` is independent of the preset. It uses the camera alignment check on high-confidence frame pairs where the retime needs an in-between sample. Pairs that fail alignment use a captured frame. The default is captured frames only.
+
+Show the exact export path, dimensions, rate, and preset before encoding with `--plan`. Repeat the command without `--plan` to render. `--output` sets the filename inside `exports/`. Pass `--workspace /absolute/path` to both commands to select the managed workspace. The render result includes export settings and the measured bitrate when available.
+
+```sh
+./camera-smoother render --job "$JOB" --preset apple-playback --interpolate auto --output smooth-pan.mp4 --plan
+```
+
 Use `./camera-smoother --workspace /path/to/workspace serve --gallery` to play the edited proxies for completed jobs on one page. Open **Compare** on a clip to see its original and edited versions on a shared playhead. Gallery mode is local only and holds a shared lock on each listed job until the server stops. Restart the gallery after rendering to include new jobs.
 
 Optional flags and variants are shown below. Each example analyzes a separate job so both exports can be retained.
@@ -67,7 +86,7 @@ FLOW_JOB=$(./camera-smoother analyze "$SOURCE" |
 # ProRes 422 editing export, with an optional viewing region and frame-rate override
 EDIT_JOB=$(./camera-smoother analyze "$SOURCE" --motion slide --reference .1,.15,.8,.65 |
   python3.13 -c 'import json,sys; print(json.load(sys.stdin)["job"])')
-./camera-smoother render --job "$EDIT_JOB" --codec prores --fps 30000/1001 --output edit.mov
+./camera-smoother render --job "$EDIT_JOB" --preset editing --fps 30000/1001 --output edit.mov
 ```
 
 - `--reference x,y,width,height` uses normalized coordinates in the displayed orientation. Choose a broad region with stable features. `--motion auto` estimates the model. Use `pan`, `tilt`, `slide`, `push` or `pull` when the intended move is known. Set `--fov` for a known horizontal field of view. The default is 60°.

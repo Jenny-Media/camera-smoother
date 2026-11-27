@@ -8,6 +8,10 @@ MOVES = {"pan", "tilt", "slide", "push-in", "pullback"}
 MIN_SPEED, MAX_SPEED = .55, 1.80
 
 
+def safe_auto_pair(pair):
+    return pair["reliable"] and pair["kind"] in MOVES and pair["confidence"] >= .75
+
+
 def sections(pairs):
     start = 0
     while start < len(pairs):
@@ -133,6 +137,7 @@ def plan(media, pairs, fps, target_duration=None):
     speed_output = input_speed * np.divide(np.diff(source), np.diff(output_anchors))
     brackets = np.searchsorted(output_anchors, output, side="right") - 1
     mapping = []
+    candidates = auto_candidates = 0
     for index, active in enumerate(original_indices(media, fps, count, duration_scale)):
         time = float(output[index])
         left = int(brackets[index])
@@ -145,6 +150,8 @@ def plan(media, pairs, fps, target_duration=None):
             sampled = float(source[left] + fraction * step)
             nearest = right if fraction >= .5 else left
             allow_flow = .10 < fraction < .90 and step / span < .97
+            candidates += int(allow_flow)
+            auto_candidates += int(allow_flow and safe_auto_pair(pairs[left]))
         else:
             left = right = nearest = active
             sampled = float(source[-1]) if index == count - 1 else min(time / float(duration_scale), float(source[-1]))
@@ -166,10 +173,22 @@ def plan(media, pairs, fps, target_duration=None):
         if skipped:
             warnings.append(f"Output frame grid skips {len(skipped)} detected shot(s) starting at "
                             f"{', '.join(skipped[:8])}. Increase the output frame rate to preserve them.")
+    uncertain = [segment for segment in intervals if not segment["reliable"] and segment["kind"] != "cut"]
+    retimed = sum(segment["retimed"] for segment in intervals)
+    recommendation = {
+        "retime": "recommended" if retimed else ("review-first" if uncertain else "little-change"),
+        "retimed_segments": retimed,
+        "uncertain_section_count": len(uncertain),
+        "uncertain_sections": [{key: section[key] for key in ("start", "end", "kind", "reasons")}
+                               for section in uncertain[:12]],
+        "frame_generation": "preview-auto" if auto_candidates else "captured-frames",
+        "interpolation_candidates": candidates,
+        "auto_candidates": auto_candidates,
+    }
     return {"fps": str(fps), "duration": count / float(fps), "target_duration": duration,
             "duration_scale": str(duration_scale),
             "motion_types": motion_types, "segments": intervals, "warnings": media["warnings"] + warnings,
-            "time_map": mapping, "output_anchors": output_anchors.tolist(),
+            "time_map": mapping, "output_anchors": output_anchors.tolist(), "recommendation": recommendation,
             "source_speed": input_speed.tolist(), "retimed_speed": speed_output.tolist(),
             "speed_unit": "Per-model apparent progress per second. Compare within a segment.",
             "speed_bounds": [MIN_SPEED / float(duration_scale), MAX_SPEED / float(duration_scale)]}
