@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Even out the speed of pans, slides, and push-ins on your Mac with Camera Smoother.">
-  <meta name="theme-color" content="#111818">
+  <meta name="theme-color" content="#f5f4ee">
   <link rel="canonical" href="https://smooth.jenny.media/">
   <link rel="stylesheet" href="style.css">
   <script src="copy.js" defer></script>
@@ -12,31 +12,36 @@
 </head>
 <body>
   <main class="shell">
-    <header>
-      <h1>Camera Smoother</h1>
-      <p class="intro">Even out the speed of pans, slides, and push-ins.</p>
+    <header class="hero">
+      <img src="coastal-hero.webp" width="1440" height="811" alt="" fetchpriority="high">
+      <div class="hero-copy">
+        <h1>Camera Smoother</h1>
+        <p class="intro">Even out the speed of pans, slides, and push-ins.</p>
+      </div>
     </header>
 
-    <section aria-labelledby="prompt-heading">
-      <div class="section-heading">
-        <h2 id="prompt-heading">Prompt for your agent</h2>
-        <button type="button" data-copy="agent-prompt" hidden>Copy prompt</button>
-      </div>
-      <p class="prompt" id="agent-prompt">Read https://smooth.jenny.media/agent.md, install Camera Smoother if needed, and help me smooth a local clip I choose.</p>
-      <p class="copy-status" role="status"></p>
-    </section>
+    <div class="actions">
+      <section class="action agent" aria-labelledby="prompt-heading">
+        <div class="section-heading">
+          <h2 id="prompt-heading">Prompt for your agent</h2>
+          <button type="button" data-copy="agent-prompt" hidden>Copy prompt</button>
+        </div>
+        <p class="snippet" id="agent-prompt">Read https://smooth.jenny.media/agent.md, install Camera Smoother if needed, and help me smooth a local clip I choose.</p>
+        <p class="copy-status" role="status"></p>
+      </section>
 
-    <section aria-labelledby="install-heading">
-      <div class="section-heading">
-        <h2 id="install-heading">Install in Terminal</h2>
-        <button type="button" data-copy="install-command" hidden>Copy install command</button>
-      </div>
-      <p>Requires an Apple silicon Mac with Git and Homebrew.</p>
-      <pre><code id="install-command">installer=$(curl -fsSL https://smooth.jenny.media/install.sh) &amp;&amp; bash -c "$installer"</code></pre>
-      <p class="copy-status" role="status"></p>
-    </section>
+      <section class="action" aria-labelledby="install-heading">
+        <div class="section-heading">
+          <h2 id="install-heading">Install in Terminal</h2>
+          <button type="button" data-copy="install-command" hidden>Copy command</button>
+        </div>
+        <pre class="snippet"><code id="install-command">installer=$(curl -fsSL https://smooth.jenny.media/install.sh) &amp;&amp; bash -c "$installer"</code></pre>
+        <p class="requirements">Requires an Apple silicon Mac with Git and Homebrew.</p>
+        <p class="copy-status" role="status"></p>
+      </section>
+    </div>
 
-    <section aria-labelledby="how-heading">
+    <section class="how" aria-labelledby="how-heading">
       <h2 id="how-heading">How it works</h2>
       <p>Camera Smoother follows visual features from frame to frame and adjusts the timing where it can measure the move reliably. It preserves the camera path and saves a separate video on your Mac.</p>
     </section>
